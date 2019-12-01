@@ -1,13 +1,7 @@
-use libc;
-use memmap::MmapOptions;
 use std::env;
-use std::ffi::CString;
-use std::fs::File;
 use std::mem;
-use std::os::unix::io::{AsRawFd, FromRawFd};
 
 use std::io::prelude::*;
-use std::io::BufReader;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,22 +21,12 @@ fn main() {
         .write(true)
         .open(img_file)
         .unwrap();
+    
+    let mut img = Vec::new();
+    let _ = (&file).read_to_end(&mut img).unwrap();
+    //println!("{:?}", img);
 
-    let img_size = unsafe {
-        let root = CString::new(img_file.chars().map(|c| c as u8).collect::<Vec<u8>>()).unwrap();
-        let mut stat: libc::stat = std::mem::zeroed();
-        println!("{}", stat.st_blksize);
-        if libc::stat(root.as_ptr(), &mut stat) >= 0 {
-            println!("{}", stat.st_blksize);
-        }
-        stat.st_blksize as usize
-    };
-    println!("{}", img_size);
-    let img = unsafe { MmapOptions::new().map(&file).unwrap() };
-    println!("{:?}", img);
     let sblk = get_superblock(&img);
-    println!("{:?}", sblk);
-
     let root_inode_number = 1;
     let root_inode = iget(&img, &sblk, root_inode_number);
 
@@ -69,7 +53,7 @@ fn main() {
     }
 }
 
-fn get_superblock(img: &memmap::Mmap) -> SuperBlock {
+fn get_superblock(img: &Vec<u8>) -> SuperBlock {
     SuperBlock {
         magic: u32::from_be_bytes([
             img[BSIZE + 3],
@@ -124,7 +108,7 @@ fn get_superblock(img: &memmap::Mmap) -> SuperBlock {
 
 const IPB: usize = BSIZE / mem::size_of::<Dinode>();
 
-fn iget(img: &memmap::Mmap, sblk: &SuperBlock, inum: usize) -> Dinode {
+fn iget(img: &Vec<u8>, sblk: &SuperBlock, inum: usize) -> Dinode {
     //println!("IPB:{}", IPB);
     let pos = inum / IPB + sblk.inodestart as usize;
     //println!("{}", pos);
@@ -160,14 +144,14 @@ fn iget(img: &memmap::Mmap, sblk: &SuperBlock, inum: usize) -> Dinode {
 
 const DIRSIZ: usize = 14;
 
-fn iread(img: &memmap::Mmap, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
+fn iread(img: &Vec<u8>, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
     let mut buf = vec![0; n];
     (&img[BSIZE * ip.addrs[(off / BSIZE) as usize] as usize + off % BSIZE..])
         .read_exact(buf.as_mut_slice())
         .unwrap();
     buf
 }
-fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String) -> Option<Dinode> {
+fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<Dinode> {
     let mut off = 0;
     while off < dp.size {
         let buf = iread(&img, dp, std::mem::size_of::<Dirent>(), off as usize);
@@ -198,7 +182,7 @@ fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String) -> Option<Dinode> {
     None
 }
 
-fn ilookup(img: &memmap::Mmap, rp: &Dinode, path: &String) -> Option<Dinode> {
+fn ilookup(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
     let names: Vec<&str> = path.split('/').filter(|s| *s != "").collect();
     //println!("{:?}", names);
     let mut rp = (*rp).clone();
@@ -218,7 +202,7 @@ fn ilookup(img: &memmap::Mmap, rp: &Dinode, path: &String) -> Option<Dinode> {
 
 const T_DIR: i16 = 1;
 
-fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) {
+fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     if argc != 1 {
         println!("error");
         return;
