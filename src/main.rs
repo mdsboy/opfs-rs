@@ -51,8 +51,20 @@ fn main() {
             println!("ls");
             do_ls(&img, &root_inode, args.len() - 3, &args[3..]);
         }
-        _ => {
+        "get" => {
+            println!("get");
             unimplemented!();
+        }
+        "put" => {
+            println!("put");
+            unimplemented!();
+        }
+        "rn" => {
+            println!("rm");
+            unimplemented!();
+        }
+        _ => {
+            println!("error");
         }
     }
 }
@@ -147,46 +159,12 @@ fn iget(img: &memmap::Mmap, sblk: &SuperBlock, inum: usize) -> Dinode {
 }
 
 const DIRSIZ: usize = 14;
-/*
-fn skiplem(path: &String, name: &String) -> String {
-    let mut i = 0;
-    let path: Vec<char> = path.chars().collect();
-    while path[i] == '/' {
-        i += 1;
-    }
-    path
-}
-*/
-
-/*
-fn bmap(img: &memmap::Mmap, ip: &Dinode, n: usize) {
-    if n < NDIRECT {
-        let addr = ip.addrs[n];
-        if addr == 0 {
-            addr =
-        }
-    }
-}*/
 
 fn iread(img: &memmap::Mmap, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
-    /*let mut t = 0;
-    let mut m = 0;
-    let mut off = off;*/
-    //while t < n {
     let mut buf = vec![0; n];
     (&img[BSIZE * ip.addrs[(off / BSIZE) as usize] as usize + off % BSIZE..])
         .read_exact(buf.as_mut_slice())
         .unwrap();
-    /*
-    let po = ip.addrs[(off / BSIZE) as usize] as usize;
-    println!("addr:{}", po);
-    println!("off:{}", off);
-    println!("{:?}", img[po..po+10].to_vec());*/
-    /*m = std::cmp::min(n - t, BSIZE - off % BSIZE);
-        t += m;
-        off += m;
-    }
-    vec![]*/
     buf
 }
 fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String) -> Option<Dinode> {
@@ -209,13 +187,13 @@ fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String) -> Option<Dinode> {
             .filter(|&c| *c != 0)
             .map(|&c| c as char)
             .collect::<String>();
-        //println!("{},{}", name, search_name);
+        println!("{},{}", name, search_name);
         if name == search_name {
             //println!("po");
             return Some(iget(img, &get_superblock(img), de.inum as usize));
         }
 
-        off += mem::size_of::<Dinode>() as u32;
+        off += mem::size_of::<Dirent>() as u32;
     }
     None
 }
@@ -278,7 +256,7 @@ fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) 
 
             let p = iget(img, &get_superblock(img), de.inum as usize);
             println!(
-                "{}, {}, {}, {}",
+                "{} {} {} {}",
                 de.name.iter().map(|&c| c as char).collect::<String>(),
                 p.file_type,
                 de.inum,
@@ -289,6 +267,7 @@ fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) 
             //println!("{}", off);
         }
     } else {
+        println!("{} {} {} {}", path, ip.file_type, 0, ip.size);
     }
 }
 
