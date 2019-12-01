@@ -1,3 +1,4 @@
+use crate::fs::*;
 use crate::libfs::*;
 
 pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
@@ -12,9 +13,9 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
             println!("error");
             return;
         }
-    };/*
-    println!("{}", path);
-    println!("{:?}", ip);*/
+    }; /*
+       println!("{}", path);
+       println!("{:?}", ip);*/
     if ip.file_type == T_DIR {
         let mut off = 0;
         while off < ip.size {
@@ -50,5 +51,47 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
         }
     } else {
         println!("{} {} {} {}", path, ip.file_type, 0, ip.size);
+    }
+}
+
+pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
+    if argc != 1 {
+        println!("error");
+        return;
+    }
+    let path = &argv[0];
+    let ip = match ilookup(img, root_inode, &path) {
+        Some(ip) => ip,
+        None => {
+            println!("error");
+            return;
+        }
+    };
+
+    println!("{}", ip.size);
+    
+    //let buf = iread(&img, &ip, ip.size as usize, 0);
+    /*
+    println!(
+        "{}",
+        buf.iter()
+            .map(|&c| c as char)
+            .collect::<String>()
+    );*/
+
+    //println!("{}", std::str::from_utf8(&buf).unwrap());
+    let mut off = 0;
+    while off < ip.size {
+        let buf = iread(
+            &img,
+            &ip,
+            BUFSIZE,
+            off as usize,
+        );
+        //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
+        //println!("{:?}", buf);
+        println!("{}", std::str::from_utf8(&buf).unwrap());
+
+        off += BUFSIZE as u32;
     }
 }

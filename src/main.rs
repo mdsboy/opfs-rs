@@ -3,8 +3,8 @@ use std::io::prelude::*;
 
 mod libfs;
 mod cmd;
+mod fs;
 use libfs::*;
-use cmd::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -35,11 +35,11 @@ fn main() {
     match &**cmd {
         "ls" => {
             println!("ls");
-            do_ls(&img, &root_inode, args.len() - 3, &args[3..]);
+            cmd::do_ls(&img, &root_inode, args.len() - 3, &args[3..]);
         }
         "get" => {
             println!("get");
-            unimplemented!();
+            cmd::do_get(&img, &root_inode, args.len() - 3, &args[3..]);
         }
         "put" => {
             println!("put");
