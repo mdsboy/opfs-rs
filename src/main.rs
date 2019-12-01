@@ -38,32 +38,29 @@ fn main() {
         stat.st_blksize as usize
     };
     println!("{}", img_size);
-    /*
-        let img = unsafe {
-            libc::mmap(
-                ::std::ptr::null_mut(),
-                img_size as usize,
-                libc::PROT_READ | libc::PROT_WRITE,
-                libc::MAP_SHARED,
-                file.as_raw_fd(),
-                0,
-            )
-        };
-        println!("Address of mapped data: {:p}", img);
-    */
+    
     let img = unsafe { MmapOptions::new().map(&file).unwrap() };
     println!("{:?}", img);
-    /*
-        let inner: Vec<u8> = img.to_vec();
-        println!("{:?}", inner);
-        println!("{}", inner.len());
-    */
-    //let ser = bincode::deserialize(&img).unwrap();
-    /*let sblk = unsafe {
-        std::mem::transmute::<std::ffi::c_void, superblock>(img.as_ptr())
-    };*/
-    println!("{}", img.first().unwrap());
-    let sblk = SuperBlock {
+    
+    let sblk = get_superblock(&img);
+    println!("{:?}", sblk);
+
+    let root_inode_number = 1;
+    let root_inode = iget(&img, &sblk, root_inode_number);
+
+    match &**cmd {
+        "ls" => {
+            println!("ls");
+            do_ls(&img, args.len() - 3, &args[3..]);
+        }
+        _ => {
+            unimplemented!();
+        }
+    }
+}
+
+fn get_superblock(img: &memmap::Mmap) -> SuperBlock {
+    SuperBlock {
         magic: u32::from_be_bytes([
             img[BSIZE + 3],
             img[BSIZE + 2],
@@ -112,18 +109,16 @@ fn main() {
             img[BSIZE + 29],
             img[BSIZE + 28],
         ]),
-    };
-    println!("{:?}", sblk);
+    }
+}
 
-    let root_inode_number = 1;
+const IPB: usize = BSIZE / mem::size_of::<Dinode>();
 
-    let ipb = BSIZE / mem::size_of::<Dinode>();
-    println!("IPB:{}", ipb);
-    let pos = root_inode_number / ipb + sblk.inodestart as usize;
+fn iget(img: &memmap::Mmap, sblk: &SuperBlock, inum: usize) -> Dinode {
+    println!("IPB:{}", IPB);
+    let pos = inum / IPB + sblk.inodestart as usize;
     println!("{}", pos);
-    /*let root_inode = img[pos];
-    println!("{}", root_inode);*/
-    let offset = (root_inode_number % ipb) as u8;
+    let offset = (inum % IPB) as u8;
     println!("{}", offset);
 
     let inode_pos = BSIZE * pos + mem::size_of::<Dinode>();
@@ -150,6 +145,15 @@ fn main() {
         ]);
     }
     println!("{:?}", root_inode);
+    return root_inode;
+}
+
+fn do_ls(img: &memmap::Mmap, argc: usize, argv: &[String]) {
+    if argc != 1 {
+        println!("error");
+        return;
+    }
+    let path = &argv[0];
 }
 
 #[derive(Debug)]
