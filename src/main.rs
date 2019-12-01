@@ -116,10 +116,10 @@ fn iget(img: &memmap::Mmap, sblk: &SuperBlock, inum: usize) -> Dinode {
     //println!("IPB:{}", IPB);
     let pos = inum / IPB + sblk.inodestart as usize;
     //println!("{}", pos);
-    let offset = (inum % IPB) as u8;
+    let offset = inum % IPB;
     //println!("{}", offset);
 
-    let inode_pos = BSIZE * pos + mem::size_of::<Dinode>();
+    let inode_pos = BSIZE * pos + mem::size_of::<Dinode>() * offset;
 
     let mut root_inode = Dinode {
         file_type: i16::from_be_bytes([img[inode_pos + 1], img[inode_pos + 0]]),
@@ -159,17 +159,6 @@ fn skiplem(path: &String, name: &String) -> String {
 */
 
 /*
-
-fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String, offp: u32) -> Option<Dinode> {
-    let mut off = 0;
-    while off < dp.size {
-        off += mem::size_of::<Dinode>() as u32;
-        let de =
-        if name == de.name {}
-    }
-    None
-}*/
-/*
 fn bmap(img: &memmap::Mmap, ip: &Dinode, n: usize) {
     if n < NDIRECT {
         let addr = ip.addrs[n];
@@ -188,7 +177,7 @@ fn iread(img: &memmap::Mmap, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
     (&img[BSIZE * ip.addrs[(off / BSIZE) as usize] as usize + off % BSIZE..])
         .read_exact(buf.as_mut_slice())
         .unwrap();
-/*
+    /*
     let po = ip.addrs[(off / BSIZE) as usize] as usize;
     println!("addr:{}", po);
     println!("off:{}", off);
@@ -200,10 +189,53 @@ fn iread(img: &memmap::Mmap, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
     vec![]*/
     buf
 }
+fn dlookup(img: &memmap::Mmap, dp: &Dinode, name: &String) -> Option<Dinode> {
+    let mut off = 0;
+    while off < dp.size {
+        let buf = iread(&img, dp, std::mem::size_of::<Dirent>(), off as usize);
+        //println!("{:?}", buf);
 
-fn ilookup(img: &memmap::Mmap, rp: &Dinode, path: &String) -> Dinode {
-    let mut name = ['\0'; DIRSIZ + 1];
-    iget(img, &get_superblock(img), 1)
+        let mut de = Dirent {
+            inum: u16::from_be_bytes([buf[1], buf[0]]),
+            name: [0; DIRSIZ],
+        };
+
+        for i in 0..DIRSIZ {
+            de.name[i] = buf[i + 2];
+        }
+        let search_name = &de
+            .name
+            .iter()
+            .filter(|&c| *c != 0)
+            .map(|&c| c as char)
+            .collect::<String>();
+        //println!("{},{}", name, search_name);
+        if name == search_name {
+            //println!("po");
+            return Some(iget(img, &get_superblock(img), de.inum as usize));
+        }
+
+        off += mem::size_of::<Dinode>() as u32;
+    }
+    None
+}
+
+fn ilookup(img: &memmap::Mmap, rp: &Dinode, path: &String) -> Option<Dinode> {
+    let names: Vec<&str> = path.split('/').filter(|s| *s != "").collect();
+    //println!("{:?}", names);
+    let mut rp = (*rp).clone();
+    if names.is_empty() {
+        return Some(rp);
+    }
+
+    for i in 0..names.len() {
+        //println!("{}", names[i]);
+        rp = match dlookup(img, &rp, &names[i].to_string()) {
+            Some(dp) => dp,
+            None => return None,
+        };
+    }
+    Some(rp)
 }
 
 const T_DIR: i16 = 1;
@@ -214,7 +246,15 @@ fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) 
         return;
     }
     let path = &argv[0];
-    let ip = ilookup(img, root_inode, &path);
+    let ip = match ilookup(img, root_inode, &path) {
+        Some(ip) => ip,
+        None => {
+            println!("error");
+            return;
+        }
+    };
+    println!("{}", path);
+    println!("{:?}", ip);
     if ip.file_type == T_DIR {
         let mut off = 0;
         while off < ip.size {
@@ -228,7 +268,7 @@ fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) 
             };
 
             for i in 0..DIRSIZ {
-                de.name[i] = buf[i + 1];
+                de.name[i] = buf[i + 2];
             }
 
             off += std::mem::size_of::<Dirent>() as u32;
@@ -244,6 +284,7 @@ fn do_ls(img: &memmap::Mmap, root_inode: &Dinode, argc: usize, argv: &[String]) 
                 de.inum,
                 p.size
             );
+            //println!("{:?}", p);
 
             //println!("{}", off);
         }
@@ -266,7 +307,7 @@ struct SuperBlock {
 const BSIZE: usize = 1024;
 const NDIRECT: usize = 12;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 struct Dinode {
     file_type: i16,            // File type
