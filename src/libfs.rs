@@ -298,17 +298,7 @@ pub fn daddent(img: &mut Vec<u8>, dp: &Dinode, name: &String, ip: &mut Dinode) {
         ip.nlink += 1;
     }
 }
-/*
-pub fn geti(img: &Vec<u8>, ip: &Dinode) -> usize {
-    let sblk = get_superblock(img);
-    let ni = sblk.ninodes as usize / IPB + 1;
-    for i in 0..ni {
-        let pos = (sblk.inodestart as usize + i) * BSIZE;
-        println!("{} {}", i, pos / BSIZE);
-        println!("{}", (ip.pos - pos) / BSIZE);
-        if pos <= ip.pos && ip.pos < pos + IPB * BSIZE {
-            return ip.pos - pos + i * IPB;
-        }
-    }
-    0
-}*/
+
+pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
+    unimplemented!();
+}

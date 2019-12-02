@@ -135,4 +135,21 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
 
 
 pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
+    if argc != 1 {
+        println!("error");
+    }
+    let path = &argv[0];
+    let ip = match ilookup(img, root_inode, path) {
+        Some(ip) => ip,
+        None => {
+            println!("error");
+            return;
+        }
+    };
+    if ip.file_type == T_DIR {
+        println!("error");
+        return;
+    }
+
+    iunlink(img, root_inode, path);
 }
