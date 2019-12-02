@@ -3,7 +3,14 @@ use std::mem;
 pub const IPB: usize = BSIZE / mem::size_of::<Dinode>();
 
 pub const DIRSIZ: usize = 14;
-pub const T_DIR: i16 = 1;
+
+pub const T_DIR: i16 = 1; // Directory
+pub const T_FILE: i16 = 2; // File
+pub const T_DEV: i16 = 3; // Device
+
+
+pub const MAXFILE: usize = NDIRECT + NINDIRECT;
+pub const MAXFILESIZE: usize = MAXFILE * BSIZE;
 
 pub const BSIZE: usize = 1024;
 pub const NDIRECT: usize = 12;

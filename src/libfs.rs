@@ -114,20 +114,39 @@ pub fn bmap(img: &Vec<u8>, ip: &Dinode, n: usize) -> usize {
     }
 }
 
+
+pub fn iwrite(img: &mut Vec<u8>, ip: &mut Dinode, off: usize, buf: &Vec<u8>) {
+    //let n = if off + n > ip.size as usize { ip.size as usize - off } else { n };
+    let mut off = off;
+    let mut t = 0;
+    let n = buf.len();
+    while t < n {
+        let pos = bmap(img, ip, off / BSIZE) + off % BSIZE;
+        let m = std::cmp::min(n-t, BSIZE - off % BSIZE);
+        //println!("{}, {}", pos, m);
+        //println!("{}", off);
+        //buf.extend_from_slice(&img[pos..pos+m]);
+        
+        for i in 0..m {
+            img[pos + i] = buf[t + i];
+            println!("{}:{}", i, buf[t + i] as char);
+        }
+
+        t += m;
+        off += m;
+    }
+    if t > 0 && off as u32 > ip.size {
+        ip.size = off as u32;
+    }
+}
+
 pub fn iread(img: &Vec<u8>, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
-    /*
-    let mut buf = vec![0; n];
-    (&img[BSIZE * ip.addrs[(off / BSIZE) as usize] as usize + off % BSIZE..])
-        .read_exact(buf.as_mut_slice())
-        .unwrap();
-    buf*/
     let n = if off + n > ip.size as usize { ip.size as usize - off } else { n };
     let mut buf = vec![];
     let mut off = off;
     let mut t = 0;
     while t < n {
         let pos = bmap(img, ip, off / BSIZE) + off % BSIZE;
-        //let pos = BSIZE * ip.addrs[(off / BSIZE) as usize] as usize + off % BSIZE;
         let m = std::cmp::min(n-t, BSIZE - off % BSIZE);
         //println!("{}, {}", pos, m);
         //println!("{}", off);
@@ -138,6 +157,7 @@ pub fn iread(img: &Vec<u8>, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
     }
     buf
 }
+
 pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<Dinode> {
     let mut off = 0;
     while off < dp.size {
@@ -186,4 +206,9 @@ pub fn ilookup(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
         };
     }
     Some(rp)
+}
+
+pub fn icreate(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
+
+    None
 }

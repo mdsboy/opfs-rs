@@ -43,7 +43,7 @@ fn main() {
         }
         "put" => {
             println!("put");
-            unimplemented!();
+            cmd::do_put(&mut img, &root_inode, args.len() - 3, &args[3..], &img_file);
         }
         "rn" => {
             println!("rm");

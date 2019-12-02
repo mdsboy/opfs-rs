@@ -1,5 +1,8 @@
 use crate::fs::*;
 use crate::libfs::*;
+use std::fs::File;
+use std::io::BufWriter;
+use std::io::{Read, Write};
 
 pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     if argc != 1 {
@@ -55,7 +58,7 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
 }
 
 pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
-    if argc != 1 {
+    if argc != 2 {
         println!("error");
         return;
     }
@@ -69,7 +72,79 @@ pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) 
     };
 
     println!("{}", ip.size);
+    //let buf = iread(&img, &ip, ip.size as usize, 0);
+    /*
+    println!(
+        "{}",
+        buf.iter()
+            .map(|&c| c as char)
+            .collect::<String>()
+    );*/
+
+    let path2 = &argv[1];
+    let mut writer = BufWriter::new(File::create(path2).unwrap());
+    //println!("{}", std::str::from_utf8(&buf).unwrap());
     
+    let mut off = 0;
+    while off < ip.size {
+        let buf = iread(&img, &ip, BUFSIZE, off as usize);
+        //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
+        //println!("{:?}", buf);
+        println!("{}", std::str::from_utf8(&buf).unwrap());
+        writer.write_all(&buf).unwrap();
+
+        off += BUFSIZE as u32;
+    }
+}
+
+pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String], file_name: &String) {
+    if argc != 2 {
+        println!("error");
+        return;
+    }
+
+    let path = &argv[0];
+    let path2 = &argv[1];
+    let mut file = File::open(path2).unwrap();
+    let mut buf: Vec<u8> = vec![];
+    file.read_to_end(&mut buf).unwrap();
+    println!("{}", std::str::from_utf8(&buf).unwrap());
+
+    let mut ip = match ilookup(img, root_inode, &path) {
+        Some(ip) => {
+            if ip.file_type != T_FILE {
+                println!("error");
+                return;
+            } else {
+                ip
+            }
+        }
+        None => match icreate(img, root_inode, path) {
+            Some(ip) => ip,
+            None => {
+                println!("error");
+                return;
+            }
+        },
+    };
+    println!("{}", ip.size);
+
+    // let mut off = 0;
+    // while off < MAXFILESIZE {
+    //     iwrite(img, &ip, BUFSIZE, off as usize, &buf);
+    //     //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
+    //     //println!("{:?}", buf);
+    //     println!("{}", std::str::from_utf8(&buf).unwrap());
+
+    //     off += BUFSIZE;
+    // }
+
+    iwrite(img, &mut ip, 0, &buf);
+    println!("{}", std::str::from_utf8(&buf).unwrap());
+
+    let mut writer = File::create(file_name).unwrap();
+    writer.write_all(&img).unwrap();
+
     //let buf = iread(&img, &ip, ip.size as usize, 0);
     /*
     println!(
@@ -80,18 +155,4 @@ pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) 
     );*/
 
     //println!("{}", std::str::from_utf8(&buf).unwrap());
-    let mut off = 0;
-    while off < ip.size {
-        let buf = iread(
-            &img,
-            &ip,
-            BUFSIZE,
-            off as usize,
-        );
-        //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
-        //println!("{:?}", buf);
-        println!("{}", std::str::from_utf8(&buf).unwrap());
-
-        off += BUFSIZE as u32;
-    }
 }
