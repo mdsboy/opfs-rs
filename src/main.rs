@@ -25,7 +25,7 @@ fn main() {
         .open(img_file)
         .unwrap();
     let mut img = Vec::new();
-    let _ = (&file).read_to_end(&mut img).unwrap();
+    (&file).read_to_end(&mut img).unwrap();
     //println!("{:?}", img);
 
     let sblk = get_superblock(&img);

@@ -22,7 +22,6 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     if ip.file_type == T_DIR {
         let mut off = 0;
         while off < ip.size {
-            //let mut buf = vec![0; std::mem::size_of::<Dinode>()];
             let buf = iread(&img, &ip, std::mem::size_of::<Dirent>(), off as usize);
             //println!("{:?}", buf);
 

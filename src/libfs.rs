@@ -65,9 +65,10 @@ pub fn iget(img: &Vec<u8>, sblk: &SuperBlock, inum: usize) -> Dinode {
     let offset = inum % IPB;
     //println!("{}", offset);
 
-    let inode_pos = BSIZE * pos + mem::size_of::<Dinode>() * offset;
+    let inode_pos = BSIZE * pos + INODE_SIZE * offset;
 
     let mut root_inode = Dinode {
+        pos: inode_pos,
         file_type: i16::from_be_bytes([img[inode_pos + 1], img[inode_pos + 0]]),
         major: i16::from_be_bytes([img[inode_pos + 3], img[inode_pos + 2]]),
         minor: i16::from_be_bytes([img[inode_pos + 5], img[inode_pos + 4]]),
@@ -115,7 +116,7 @@ pub fn bmap(img: &Vec<u8>, ip: &Dinode, n: usize) -> usize {
 }
 
 
-pub fn iwrite(img: &mut Vec<u8>, ip: &mut Dinode, off: usize, buf: &Vec<u8>) {
+pub fn iwrite(img: &mut Vec<u8>, ip: &Dinode, off: usize, buf: &Vec<u8>) {
     //let n = if off + n > ip.size as usize { ip.size as usize - off } else { n };
     let mut off = off;
     let mut t = 0;
@@ -135,8 +136,13 @@ pub fn iwrite(img: &mut Vec<u8>, ip: &mut Dinode, off: usize, buf: &Vec<u8>) {
         t += m;
         off += m;
     }
-    if t > 0 && off as u32 > ip.size {
-        ip.size = off as u32;
+    if t > 0 {// && off as u32 > ip.size {
+        let bytes = (off as u32).to_le_bytes();
+        println!("{:?}", bytes);
+        img[ip.pos + 11] = bytes[3];
+        img[ip.pos + 10] = bytes[2];
+        img[ip.pos + 9] = bytes[1];
+        img[ip.pos + 8] = bytes[0];
     }
 }
 
