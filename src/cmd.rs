@@ -96,7 +96,7 @@ pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) 
     }
 }
 
-pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String], file_name: &String) {
+pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     if argc != 2 {
         println!("error");
         return;
@@ -129,30 +129,10 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
     };
     println!("{}", ip.size);
 
-    // let mut off = 0;
-    // while off < MAXFILESIZE {
-    //     iwrite(img, &ip, BUFSIZE, off as usize, &buf);
-    //     //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
-    //     //println!("{:?}", buf);
-    //     println!("{}", std::str::from_utf8(&buf).unwrap());
-
-    //     off += BUFSIZE;
-    // }
-
     iwrite(img, &mut ip, 0, &buf);
     println!("{}", std::str::from_utf8(&buf).unwrap());
+}
 
-    let mut writer = File::create(file_name).unwrap();
-    writer.write_all(&img).unwrap();
 
-    //let buf = iread(&img, &ip, ip.size as usize, 0);
-    /*
-    println!(
-        "{}",
-        buf.iter()
-            .map(|&c| c as char)
-            .collect::<String>()
-    );*/
-
-    //println!("{}", std::str::from_utf8(&buf).unwrap());
+pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
 }

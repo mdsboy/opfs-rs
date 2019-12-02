@@ -1,9 +1,10 @@
 use std::env;
+use std::fs::File;
 use std::io::prelude::*;
 
-mod libfs;
 mod cmd;
 mod fs;
+mod libfs;
 use libfs::*;
 
 fn main() {
@@ -19,11 +20,7 @@ fn main() {
     let img_file = &args[1];
     let cmd = &args[2];
 
-    let file = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(img_file)
-        .unwrap();
+    let file = File::open(img_file).unwrap();
     let mut img = Vec::new();
     (&file).read_to_end(&mut img).unwrap();
     //println!("{:?}", img);
@@ -43,14 +40,17 @@ fn main() {
         }
         "put" => {
             println!("put");
-            cmd::do_put(&mut img, &root_inode, args.len() - 3, &args[3..], &img_file);
+            cmd::do_put(&mut img, &root_inode, args.len() - 3, &args[3..]);
         }
         "rn" => {
             println!("rm");
-            unimplemented!();
+            cmd::do_rm(&mut img, &root_inode, args.len() - 3, &args[3..]);
         }
         _ => {
             println!("error");
         }
     }
+
+    let mut writer = std::fs::File::create(&img_file).unwrap();
+    writer.write_all(&img).unwrap();
 }

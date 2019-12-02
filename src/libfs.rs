@@ -1,7 +1,3 @@
-use std::mem;
-
-use std::io::prelude::*;
-
 use crate::fs::*;
 
 pub fn get_superblock(img: &Vec<u8>) -> SuperBlock {
