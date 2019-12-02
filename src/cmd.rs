@@ -52,7 +52,7 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
             //println!("{}", off);
         }
     } else {
-        println!("{} {} {} {}", path, ip.file_type, 0, ip.size);
+        println!("{} {} {} {}", path, ip.file_type, ip.inum, ip.size);
     }
 }
 
@@ -104,13 +104,14 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
 
     let path = &argv[0];
     let path2 = &argv[1];
-    let mut file = File::open(path2).unwrap();
+    let mut file = File::open(path).unwrap();
     let mut buf: Vec<u8> = vec![];
     file.read_to_end(&mut buf).unwrap();
     println!("{}", std::str::from_utf8(&buf).unwrap());
 
-    let mut ip = match ilookup(img, root_inode, &path) {
+    let mut ip = match ilookup(img, root_inode, &path2) {
         Some(ip) => {
+            println!("found!");
             if ip.file_type != T_FILE {
                 println!("error");
                 return;
@@ -118,7 +119,7 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
                 ip
             }
         }
-        None => match icreate(img, root_inode, path) {
+        None => match icreate(img, root_inode, path2) {
             Some(ip) => ip,
             None => {
                 println!("error");

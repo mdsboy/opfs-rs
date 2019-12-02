@@ -1,6 +1,8 @@
 use std::mem;
 
 pub const INODE_SIZE: usize = 64;
+pub const DIRENT_SIZE: usize = mem::size_of::<Dirent>();
+
 pub const IPB: usize = BSIZE / INODE_SIZE;
 
 pub const DIRSIZ: usize = 14;
@@ -33,6 +35,7 @@ pub struct SuperBlock {
 #[derive(Debug, Clone)]
 pub struct Dinode {
     pub pos: usize,
+    pub inum: u16,
     pub file_type: i16,            // File type
     pub major: i16,                // Major device number (T_DEVICE only)
     pub minor: i16,                // Minor device number (T_DEVICE only)
