@@ -27,23 +27,19 @@ fn main() {
 
     match &**cmd {
         "ls" => {
-            println!("ls");
-            cmd::do_ls(&img, &root_inode, &args[3..]);
+            cmd::do_ls(&img, &root_inode, &args[3..], progname);
         }
         "get" => {
-            println!("get");
-            cmd::do_get(&img, &root_inode, &args[3..]);
+            cmd::do_get(&img, &root_inode, &args[3..], progname);
         }
         "put" => {
-            println!("put");
-            cmd::do_put(&mut img, &root_inode, &args[3..]);
+            cmd::do_put(&mut img, &root_inode, &args[3..], progname);
         }
         "rm" => {
-            println!("rm");
-            cmd::do_rm(&mut img, &root_inode, &args[3..]);
+            cmd::do_rm(&mut img, &root_inode, &args[3..], progname);
         }
         _ => {
-            println!("error");
+            eprintln!("unknown command: {}", cmd);
         }
     }
 

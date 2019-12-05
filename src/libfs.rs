@@ -57,7 +57,7 @@ pub fn bmap(img: &Vec<u8>, ip: &Dinode, n: usize) -> usize {
     } else {
         let k = n - NDIRECT;
         if k >= NINDIRECT {
-            println!("error");
+            eprintln!("bmap: {}: invalid index number", n);
             return 0;
         }
         let iaddr = ip.addrs[NDIRECT];
@@ -76,7 +76,6 @@ pub fn iwrite(img: &mut Vec<u8>, ip: &Dinode, off: usize, buf: &Vec<u8>) -> usiz
         let m = std::cmp::min(n - t, BSIZE - off % BSIZE);
         for i in 0..m {
             img[pos + i] = buf[t + i];
-            println!("{}:{}", i, buf[t + i] as char);
         }
 
         t += m;
@@ -165,7 +164,12 @@ pub fn ilookup(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
 
     for i in 0..names.len() {
         rp = match dlookup(img, &rp, &names[i].to_string()) {
-            Some((dp, _)) => dp,
+            Some((dp, _)) => {
+                if i < names.len()-1 && rp.file_type != T_DIR {
+                    eprintln!("ilookup: {}: not a directory", names[i]);
+                }
+                dp
+            },
             None => return None,
         };
     }
@@ -182,7 +186,14 @@ pub fn icreate(img: &mut Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> 
 
     for i in 0..names.len() {
         rp = match dlookup(img, &rp, &names[i].to_string()) {
-            Some(_) => return None,
+            Some((ip, _)) => {
+                if i == names.len() - 1 {
+                    eprintln!("icreate: {}: file exists\n", names[i]);
+                    return None;
+                } else {
+                    ip
+                }
+            },
             None => {
                 let mut ip = match ialloc(img, T_FILE) {
                     Some(ip) => ip,
@@ -256,6 +267,7 @@ pub fn daddent(img: &mut Vec<u8>, dp: &Dinode, name: &String, ip: &mut Dinode) {
     }
 }
 
+// unlinks a file (dp/path)
 pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
     let names: Vec<&str> = path.split('/').filter(|s| *s != "").collect();
     let mut rp = (*rp).clone();
@@ -263,6 +275,7 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
     for i in 0..names.len() {
         let name = &names[i].to_string();
         if name == "." || name == ".." {
+            eprintln!("iunlink: cannot unlink \".\" or \"..\"");
             return;
         }
         let (mut ip, off) = match dlookup(img, &rp, name) {
@@ -276,7 +289,6 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
 
         let zero: Vec<u8> = vec![0; DIRENT_SIZE];
         iwrite(img, &rp, off, &zero);
-        println!("PO1");
 
         if let Some((rpp, _)) = dlookup(img, &ip, &"..".to_string()) {
             if ip.file_type == T_DIR && rpp.pos == rp.pos {
@@ -304,7 +316,6 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
 // truncate the file specified by ip to size
 pub fn itruncate(img: &mut Vec<u8>, ip: &mut Dinode) {
     let n = (ip.size as usize + BSIZE - 1) / BSIZE;
-    println!("{}", n);
     for i in 0..std::cmp::min(n, NDIRECT) {
         for j in 0..BSIZE {
             img[ip.addrs[i] as usize * BSIZE + j] = 0;

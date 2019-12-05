@@ -4,35 +4,28 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::{Read, Write};
 
-pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+// ls path
+pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argv: &[String], progname: &String) {
     if argv.len() != 1 {
-        println!("error");
+        eprintln!("usage: {} img_file ls path", progname);
         return;
     }
+
     let path = &argv[0];
     let ip = match ilookup(img, root_inode, &path) {
         Some(ip) => ip,
         None => {
-            println!("error");
+            eprintln!("ls: {}: no such file or directory", path);
             return;
         }
-    }; /*
-       println!("{}", path);
-       println!("{:?}", ip);*/
+    };
+
     if ip.file_type == T_DIR {
         let mut off = 0;
         while off < ip.size {
             let buf = iread(&img, &ip, std::mem::size_of::<Dirent>(), off as usize);
-            //println!("{:?}", buf);
 
-            let mut de = Dirent {
-                inum: u16::from_be_bytes([buf[1], buf[0]]),
-                name: [0; DIRSIZ],
-            };
-
-            for i in 0..DIRSIZ {
-                de.name[i] = buf[i + 2];
-            }
+            let de = get_dirent(&buf);
 
             off += std::mem::size_of::<Dirent>() as u32;
             if de.inum == 0 {
@@ -47,58 +40,43 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argv: &[String]) {
                 de.inum,
                 p.size
             );
-            //println!("{:?}", p);
-
-            //println!("{}", off);
         }
     } else {
         println!("{} {} {} {}", path, ip.file_type, ip.inum, ip.size);
     }
 }
 
-pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+// get path
+pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argv: &[String], progname: &String) {
     if argv.len() != 2 {
-        println!("error");
+        eprintln!("usage: {} img_file get path1 path2", progname);
         return;
     }
     let path = &argv[0];
     let ip = match ilookup(img, root_inode, &path) {
         Some(ip) => ip,
         None => {
-            println!("error");
+            eprintln!("get: no such file or directory: {}", path);
             return;
         }
     };
 
-    println!("{}", ip.size);
-    //let buf = iread(&img, &ip, ip.size as usize, 0);
-    /*
-    println!(
-        "{}",
-        buf.iter()
-            .map(|&c| c as char)
-            .collect::<String>()
-    );*/
-
     let path2 = &argv[1];
     let mut writer = BufWriter::new(File::create(path2).unwrap());
-    //println!("{}", std::str::from_utf8(&buf).unwrap());
 
     let mut off = 0;
     while off < ip.size {
         let buf = iread(&img, &ip, BUFSIZE, off as usize);
-        //println!("{}", buf.iter().map(|&c| c as char).collect::<String>());
-        //println!("{:?}", buf);
-        println!("{}", std::str::from_utf8(&buf).unwrap());
         writer.write_all(&buf).unwrap();
 
         off += BUFSIZE as u32;
     }
 }
 
-pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+// put path
+pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String], progname: &String) {
     if argv.len() != 2 {
-        println!("error");
+        eprintln!("usage: {} img_file put path1 path2", progname);
         return;
     }
 
@@ -107,16 +85,13 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
     let mut file = File::open(path).unwrap();
     let mut buf: Vec<u8> = vec![];
     file.read_to_end(&mut buf).unwrap();
-    println!("{}", std::str::from_utf8(&buf).unwrap());
 
     let mut ip = match ilookup(img, root_inode, &path2) {
         Some(mut ip) => {
-            println!("found!");
             if ip.file_type != T_FILE {
-                println!("error");
+                eprintln!("put: {}: directory or device", path2);
                 return;
             } else {
-                //itruncate(img, &mut ip);
                 ip.size = 0;
                 ip
             }
@@ -124,31 +99,31 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
         None => match icreate(img, root_inode, path2) {
             Some(ip) => ip,
             None => {
-                println!("error");
+                eprintln!("put: {}: cannot create", path2);
                 return;
             }
         },
     };
-    println!("size:{}", ip.size);
 
     iwrite(img, &mut ip, 0, &buf);
-    println!("{}", std::str::from_utf8(&buf).unwrap());
 }
 
-pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String], progname: &String) {
     if argv.len() != 1 {
-        println!("error");
+        eprintln!("usage: {} img_file rm path", progname);
+        return;
     }
+
     let path = &argv[0];
     let ip = match ilookup(img, root_inode, path) {
         Some(ip) => ip,
         None => {
-            println!("error");
+            eprintln!("rm: {}: no such file or directory", path);
             return;
         }
     };
     if ip.file_type == T_DIR {
-        println!("error");
+        eprintln!("rm: {}: a directory", path);
         return;
     }
 
