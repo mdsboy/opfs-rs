@@ -161,7 +161,7 @@ pub fn iread(img: &Vec<u8>, ip: &Dinode, n: usize, off: usize) -> Vec<u8> {
     buf
 }
 
-pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<Dinode> {
+pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<(Dinode, usize)> {
     let mut off = 0;
     while off < dp.size {
         let buf = iread(&img, dp, DIRENT_SIZE, off as usize);
@@ -173,7 +173,9 @@ pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<Dinode> {
         };
 
         for i in 0..DIRSIZ {
-            de.name[i] = buf[i + 2];
+            if i + 2 < buf.len() {
+                de.name[i] = buf[i + 2];
+            }
         }
         let search_name = &de
             .name
@@ -185,7 +187,7 @@ pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<Dinode> {
         //println!("{},{}", name, search_name);
         if name == search_name {
             //println!("po");
-            return Some(iget(img, &get_superblock(img), de.inum as usize));
+            return Some((iget(img, &get_superblock(img), de.inum as usize), off as usize));
         }
 
         off += DIRENT_SIZE as u32;
@@ -204,7 +206,7 @@ pub fn ilookup(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
     for i in 0..names.len() {
         //println!("{}", names[i]);
         rp = match dlookup(img, &rp, &names[i].to_string()) {
-            Some(dp) => dp,
+            Some((dp, _)) => dp,
             None => return None,
         };
     }
@@ -212,7 +214,6 @@ pub fn ilookup(img: &Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
 }
 
 pub fn icreate(img: &mut Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> {
-
     println!("not found!");
     let names: Vec<&str> = path.split('/').filter(|s| *s != "").collect();
     //println!("{:?}", names);
@@ -300,5 +301,69 @@ pub fn daddent(img: &mut Vec<u8>, dp: &Dinode, name: &String, ip: &mut Dinode) {
 }
 
 pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
-    unimplemented!();
+    let names: Vec<&str> = path.split('/').filter(|s| *s != "").collect();
+    //println!("{:?}", names);
+    let mut rp = (*rp).clone();
+
+    for i in 0..names.len() {
+        //println!("{}", names[i]);
+        let name = &names[i].to_string();
+        if name == "." || name == ".." {
+            return;
+        }
+        let (mut ip, off) = match dlookup(img, &rp, name) {
+            Some((ip, off)) => (ip, off),
+            None => return,
+        };
+        if i == names.len()-1 {
+            println!("{}", names[i]);
+
+            let zero: Vec<u8> = vec![0; DIRENT_SIZE];
+            iwrite(img, &rp, off, &zero);
+
+            println!("PO");
+            if let Some((rpp, _)) = dlookup(img, &ip, &"..".to_string()) {
+                if ip.file_type == T_DIR && rpp.pos == rp.pos {
+                    let bytes = (rp.nlink as i16).to_le_bytes();
+                    img[rp.pos + 7] = bytes[1];
+                    img[rp.pos + 6] = bytes[0];
+                    //rp.nlink -= 1;
+                }
+            }
+            ip.nlink -= 1;
+            if ip.nlink == 0 {
+                if ip.file_type != T_DEV {
+                    let n = (ip.size as usize / BSIZE - 1) / BSIZE;
+                    for i in 0..n {
+                        for j in 0..BSIZE {
+                            img[ip.addrs[i] as usize * BSIZE + j] = 0;
+                        }
+                    }
+                    if n > NDIRECT {
+                        let iaddr = ip.addrs[NDIRECT];
+                        let ni = n - NDIRECT;
+                        for i in 0..ni {
+                            let start = iaddr as usize + i * 4;
+                            let pos = u32::from_be_bytes([
+                                img[start + 3],
+                                img[start + 2],
+                                img[start + 1],
+                                img[start + 0],
+                            ]);
+                            for j in 0..BSIZE {
+                                img[pos as usize + j] = 0;
+                            }
+                        }
+                        for j in 0..BSIZE {
+                            img[iaddr as usize * BSIZE + j] = 0;
+                        }
+                    }
+                }
+                for i in 0..ip.size {
+                    img[ip.pos + i as usize] = 0;
+                }
+            }
+        }
+        rp = ip;
+    }
 }

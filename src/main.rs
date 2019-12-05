@@ -42,7 +42,7 @@ fn main() {
             println!("put");
             cmd::do_put(&mut img, &root_inode, args.len() - 3, &args[3..]);
         }
-        "rn" => {
+        "rm" => {
             println!("rm");
             cmd::do_rm(&mut img, &root_inode, args.len() - 3, &args[3..]);
         }
