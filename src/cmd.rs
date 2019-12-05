@@ -110,12 +110,14 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
     println!("{}", std::str::from_utf8(&buf).unwrap());
 
     let mut ip = match ilookup(img, root_inode, &path2) {
-        Some(ip) => {
+        Some(mut ip) => {
             println!("found!");
             if ip.file_type != T_FILE {
                 println!("error");
                 return;
             } else {
+                //itruncate(img, &mut ip);
+                ip.size = 0;
                 ip
             }
         }
@@ -127,7 +129,7 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
             }
         },
     };
-    println!("{}", ip.size);
+    println!("size:{}", ip.size);
 
     iwrite(img, &mut ip, 0, &buf);
     println!("{}", std::str::from_utf8(&buf).unwrap());
