@@ -9,10 +9,9 @@ use libfs::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
 
     if args.len() < 3 {
-        println!("error");
+        eprintln!("error");
         return;
     }
 
@@ -22,28 +21,26 @@ fn main() {
 
     let file = File::open(img_file).unwrap();
     let mut img = Vec::new();
-    (&file).read_to_end(&mut img).unwrap();
+    (&file).read_to_end(&mut img).unwrap(); 
 
-    let sblk = get_superblock(&img);
-    let root_inode_number = 1;
-    let root_inode = iget(&img, &sblk, root_inode_number);
+    let root_inode = iget(&img, fs::ROOT_INODE_NUMBER);
 
     match &**cmd {
         "ls" => {
             println!("ls");
-            cmd::do_ls(&img, &root_inode, args.len() - 3, &args[3..]);
+            cmd::do_ls(&img, &root_inode, &args[3..]);
         }
         "get" => {
             println!("get");
-            cmd::do_get(&img, &root_inode, args.len() - 3, &args[3..]);
+            cmd::do_get(&img, &root_inode, &args[3..]);
         }
         "put" => {
             println!("put");
-            cmd::do_put(&mut img, &root_inode, args.len() - 3, &args[3..]);
+            cmd::do_put(&mut img, &root_inode, &args[3..]);
         }
         "rm" => {
             println!("rm");
-            cmd::do_rm(&mut img, &root_inode, args.len() - 3, &args[3..]);
+            cmd::do_rm(&mut img, &root_inode, &args[3..]);
         }
         _ => {
             println!("error");

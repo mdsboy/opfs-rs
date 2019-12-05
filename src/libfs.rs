@@ -2,58 +2,24 @@ use crate::fs::*;
 
 pub fn get_superblock(img: &Vec<u8>) -> SuperBlock {
     SuperBlock {
-        magic: u32::from_be_bytes([
-            img[BSIZE + 3],
-            img[BSIZE + 2],
-            img[BSIZE + 1],
-            img[BSIZE + 0],
-        ]),
-        size: u32::from_be_bytes([
-            img[BSIZE + 7],
-            img[BSIZE + 6],
-            img[BSIZE + 5],
-            img[BSIZE + 4],
-        ]),
-        nblocks: u32::from_be_bytes([
-            img[BSIZE + 11],
-            img[BSIZE + 10],
-            img[BSIZE + 9],
-            img[BSIZE + 8],
-        ]),
-        ninodes: u32::from_be_bytes([
-            img[BSIZE + 15],
-            img[BSIZE + 14],
-            img[BSIZE + 13],
-            img[BSIZE + 12],
-        ]),
-        nlog: u32::from_be_bytes([
-            img[BSIZE + 19],
-            img[BSIZE + 18],
-            img[BSIZE + 17],
-            img[BSIZE + 16],
-        ]),
-        logstart: u32::from_be_bytes([
-            img[BSIZE + 23],
-            img[BSIZE + 22],
-            img[BSIZE + 21],
-            img[BSIZE + 20],
-        ]),
-        inodestart: u32::from_be_bytes([
-            img[BSIZE + 27],
-            img[BSIZE + 26],
-            img[BSIZE + 25],
-            img[BSIZE + 24],
-        ]),
-        bmapstart: u32::from_be_bytes([
-            img[BSIZE + 31],
-            img[BSIZE + 30],
-            img[BSIZE + 29],
-            img[BSIZE + 28],
-        ]),
+        magic: getu32(img, BSIZE),
+        size: getu32(img, BSIZE + 4),
+        nblocks: getu32(img, BSIZE + 8),
+        ninodes: getu32(img, BSIZE + 12),
+        nlog: getu32(img, BSIZE + 16),
+        logstart: getu32(img, BSIZE + 20),
+        inodestart: getu32(img, BSIZE + 24),
+        bmapstart: getu32(img, BSIZE + 28),
     }
 }
 
-pub fn iget(img: &Vec<u8>, sblk: &SuperBlock, inum: usize) -> Dinode {
+pub fn getu32(img: &Vec<u8>, pos: usize) -> u32 {
+    u32::from_le_bytes([img[pos], img[pos + 1], img[pos + 2], img[pos + 3]])
+}
+
+// returns the inum-th Dinode structure
+pub fn iget(img: &Vec<u8>, inum: usize) -> Dinode {
+    let sblk = get_superblock(img);
     /*println!("IPB:{}", IPB);
     println!("inum:{}", inum);*/
     let pos = inum / IPB + sblk.inodestart as usize;
@@ -190,7 +156,7 @@ pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<(Dinode, usi
         if name == search_name {
             //println!("po");
             return Some((
-                iget(img, &get_superblock(img), de.inum as usize),
+                iget(img, de.inum as usize),
                 off as usize,
             ));
         }
@@ -251,7 +217,7 @@ pub fn icreate(img: &mut Vec<u8>, rp: &Dinode, path: &String) -> Option<Dinode> 
 pub fn ialloc(img: &mut Vec<u8>, file_type: i16) -> Option<Dinode> {
     let sblk = get_superblock(img);
     for inum in 1..sblk.ninodes {
-        let mut inode = iget(img, &get_superblock(img), inum as usize);
+        let mut inode = iget(img, inum as usize);
         if inode.file_type == 0 {
             inode.file_type = file_type;
             let inum = inum as usize;

@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::{Read, Write};
 
-pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
-    if argc != 1 {
+pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+    if argv.len() != 1 {
         println!("error");
         return;
     }
@@ -39,7 +39,7 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
                 continue;
             }
 
-            let p = iget(img, &get_superblock(img), de.inum as usize);
+            let p = iget(img, de.inum as usize);
             println!(
                 "{} {} {} {}",
                 de.name.iter().map(|&c| c as char).collect::<String>(),
@@ -56,8 +56,8 @@ pub fn do_ls(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     }
 }
 
-pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
-    if argc != 2 {
+pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+    if argv.len() != 2 {
         println!("error");
         return;
     }
@@ -96,8 +96,8 @@ pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) 
     }
 }
 
-pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
-    if argc != 2 {
+pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+    if argv.len() != 2 {
         println!("error");
         return;
     }
@@ -133,8 +133,8 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
     println!("{}", std::str::from_utf8(&buf).unwrap());
 }
 
-pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
-    if argc != 1 {
+pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argv: &[String]) {
+    if argv.len() != 1 {
         println!("error");
     }
     let path = &argv[0];

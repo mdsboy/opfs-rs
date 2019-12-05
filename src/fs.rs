@@ -11,13 +11,12 @@ pub const T_DIR: i16 = 1; // Directory
 pub const T_FILE: i16 = 2; // File
 pub const T_DEV: i16 = 3; // Device
 
-pub const MAXFILE: usize = NDIRECT + NINDIRECT;
-pub const MAXFILESIZE: usize = MAXFILE * BSIZE;
-
 pub const BSIZE: usize = 1024;
 pub const NDIRECT: usize = 12;
 pub const NINDIRECT: usize = BSIZE / mem::size_of::<u32>();
 pub const BUFSIZE: usize = 1024;
+
+pub const ROOT_INODE_NUMBER: usize = 1;
 
 #[derive(Debug)]
 pub struct SuperBlock {
