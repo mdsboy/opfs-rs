@@ -22,15 +22,7 @@ fn main() {
 
     let file = File::open(img_file).unwrap();
     let mut img = Vec::new();
-    (&file).read_to_end(&mut img).unwrap(); /*
-                                            for i in 0..1000 {
-                                                for j in 0..1024 {
-                                                    print!("{}", img[i * 1024 + j]);
-                                                    if (i * 1024 + j) % 10 == 0 {
-                                                        println!();
-                                                    }
-                                                }
-                                            }*/
+    (&file).read_to_end(&mut img).unwrap();
 
     let sblk = get_superblock(&img);
     let root_inode_number = 1;

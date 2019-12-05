@@ -331,7 +331,7 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
         println!("off:{}", off);
         println!("size:{}", DIRENT_SIZE);
         iwrite(img, &rp, off, &zero);
-        /*
+
         if let Some((rpp, _)) = dlookup(img, &ip, &"..".to_string()) {
             if ip.file_type == T_DIR && rpp.pos == rp.pos {
                 let bytes = (rp.nlink as i16).to_le_bytes();
@@ -351,7 +351,7 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
             for i in 0..ip.size {
                 img[ip.pos + i as usize] = 0;
             }
-        }*/
+        }
     }
 }
 
