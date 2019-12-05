@@ -104,8 +104,9 @@ pub fn bmap(img: &Vec<u8>, ip: &Dinode, n: usize) -> usize {
         }
         let iaddr = ip.addrs[NDIRECT];
         let pos = (iaddr as usize) * BSIZE + k * 4;
-        return u32::from_be_bytes([img[pos + 3], img[pos + 2], img[pos + 1], img[pos + 0]])
-            as usize;
+        return BSIZE
+            * u32::from_be_bytes([img[pos + 3], img[pos + 2], img[pos + 1], img[pos + 0]])
+                as usize;
     }
 }
 
@@ -114,6 +115,8 @@ pub fn iwrite(img: &mut Vec<u8>, ip: &Dinode, off: usize, buf: &Vec<u8>) {
     let mut off = off;
     let mut t = 0;
     let n = buf.len();
+    println!("n:{}", n);
+    println!("off:{}", off);
     while t < n {
         let pos = bmap(img, ip, off / BSIZE) + off % BSIZE;
         let m = std::cmp::min(n - t, BSIZE - off % BSIZE);
@@ -128,8 +131,7 @@ pub fn iwrite(img: &mut Vec<u8>, ip: &Dinode, off: usize, buf: &Vec<u8>) {
         t += m;
         off += m;
     }
-    if t > 0 {
-        // && off as u32 > ip.size {
+    if t > 0 && off as u32 > ip.size {
         let bytes = (off as u32).to_le_bytes();
         println!("{:?}", bytes);
         img[ip.pos + 11] = bytes[3];
@@ -187,7 +189,10 @@ pub fn dlookup(img: &Vec<u8>, dp: &Dinode, name: &String) -> Option<(Dinode, usi
         //println!("{},{}", name, search_name);
         if name == search_name {
             //println!("po");
-            return Some((iget(img, &get_superblock(img), de.inum as usize), off as usize));
+            return Some((
+                iget(img, &get_superblock(img), de.inum as usize),
+                off as usize,
+            ));
         }
 
         off += DIRENT_SIZE as u32;
@@ -315,55 +320,60 @@ pub fn iunlink(img: &mut Vec<u8>, rp: &Dinode, path: &String) {
             Some((ip, off)) => (ip, off),
             None => return,
         };
-        if i == names.len()-1 {
-            println!("{}", names[i]);
+        if i < names.len() - 1 {
+            rp = ip;
+            continue;
+        }
+        println!("{}", names[i]);
+        println!("{:?}", ip);
 
-            let zero: Vec<u8> = vec![0; DIRENT_SIZE];
-            iwrite(img, &rp, off, &zero);
-
-            println!("PO");
-            if let Some((rpp, _)) = dlookup(img, &ip, &"..".to_string()) {
-                if ip.file_type == T_DIR && rpp.pos == rp.pos {
-                    let bytes = (rp.nlink as i16).to_le_bytes();
-                    img[rp.pos + 7] = bytes[1];
-                    img[rp.pos + 6] = bytes[0];
-                    //rp.nlink -= 1;
-                }
-            }
-            ip.nlink -= 1;
-            if ip.nlink == 0 {
-                if ip.file_type != T_DEV {
-                    let n = (ip.size as usize / BSIZE - 1) / BSIZE;
-                    for i in 0..n {
-                        for j in 0..BSIZE {
-                            img[ip.addrs[i] as usize * BSIZE + j] = 0;
-                        }
-                    }
-                    if n > NDIRECT {
-                        let iaddr = ip.addrs[NDIRECT];
-                        let ni = n - NDIRECT;
-                        for i in 0..ni {
-                            let start = iaddr as usize + i * 4;
-                            let pos = u32::from_be_bytes([
-                                img[start + 3],
-                                img[start + 2],
-                                img[start + 1],
-                                img[start + 0],
-                            ]);
-                            for j in 0..BSIZE {
-                                img[pos as usize + j] = 0;
-                            }
-                        }
-                        for j in 0..BSIZE {
-                            img[iaddr as usize * BSIZE + j] = 0;
-                        }
-                    }
-                }
-                for i in 0..ip.size {
-                    img[ip.pos + i as usize] = 0;
-                }
+        let zero: Vec<u8> = vec![0; DIRENT_SIZE];
+        println!("off:{}", off);
+        println!("size:{}", DIRENT_SIZE);
+        iwrite(img, &rp, off, &zero);
+        /*
+        if let Some((rpp, _)) = dlookup(img, &ip, &"..".to_string()) {
+            if ip.file_type == T_DIR && rpp.pos == rp.pos {
+                let bytes = (rp.nlink as i16).to_le_bytes();
+                img[rp.pos + 7] = bytes[1];
+                img[rp.pos + 6] = bytes[0];
+                rp.nlink -= 1;
             }
         }
-        rp = ip;
+        let bytes = (ip.nlink as i16).to_le_bytes();
+        img[ip.pos + 7] = bytes[1];
+        img[ip.pos + 6] = bytes[0];
+        ip.nlink -= 1;
+        if ip.nlink == 0 {
+            if ip.file_type != T_DEV {
+                itruncate(img, &ip);
+            }
+            for i in 0..ip.size {
+                img[ip.pos + i as usize] = 0;
+            }
+        }*/
+    }
+}
+
+pub fn itruncate(img: &mut Vec<u8>, ip: &Dinode) {
+    let n = (ip.size as usize + BSIZE - 1) / BSIZE;
+    println!("{}", n);
+    for i in 0..std::cmp::min(n, NDIRECT) {
+        for j in 0..BSIZE {
+            img[ip.addrs[i] as usize * BSIZE + j] = 0;
+        }
+    }
+    if n > NDIRECT {
+        let iaddr = ip.addrs[NDIRECT];
+        let ni = n - NDIRECT;
+        for i in 0..ni {
+            let pos = bmap(img, ip, i);
+            for j in 0..BSIZE {
+                img[pos as usize + j] = 0;
+            }
+        }
+        for j in 0..BSIZE {
+            img[iaddr as usize * BSIZE + j] = 0;
+        }
     }
 }

@@ -83,7 +83,7 @@ pub fn do_get(img: &Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) 
     let path2 = &argv[1];
     let mut writer = BufWriter::new(File::create(path2).unwrap());
     //println!("{}", std::str::from_utf8(&buf).unwrap());
-    
+
     let mut off = 0;
     while off < ip.size {
         let buf = iread(&img, &ip, BUFSIZE, off as usize);
@@ -132,7 +132,6 @@ pub fn do_put(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[Strin
     iwrite(img, &mut ip, 0, &buf);
     println!("{}", std::str::from_utf8(&buf).unwrap());
 }
-
 
 pub fn do_rm(img: &mut Vec<u8>, root_inode: &Dinode, argc: usize, argv: &[String]) {
     if argc != 1 {
